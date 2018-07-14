@@ -1,0 +1,35 @@
+- name: Install apache2 web server
+  become: true
+  apt: pkg={{ item }} state=installed update_cache=true
+  with_items:
+  - apache2
+  - libapache2-mod-fastcgi
+
+- name: Enable apache2 modules
+  become: yes
+  command: a2enmod rewrite actions alias fastcgi proxy_fcgi
+
+- name: Upload apache2 default configuration
+  become: yes
+  copy: src=files/000-default.conf dest=/etc/apache2/sites-enabled/
+
+- name: Remove default apache2 index.html file
+  become: yes
+  ignore_errors: yes
+  command: rm /var/www/html/index.html 
+
+- name: Upload default index.php for host 
+  become: yes
+  git: repo=https://github.com/pkvanda/helloworld.git dest=/var/www/helloworld update=no  
+  
+- name: Generate a Self Signed OpenSSL certificate
+  openssl_certificate:
+    path: /etc/ssl/crt/ansible.com.crt
+    privatekey_path: /etc/ssl/private/ansible.com.pem
+    csr_path: /etc/ssl/csr/ansible.com.csr
+    provider: selfsigned
+
+
+- name: Restart webserver
+  become: yes
+  service: name=apache2 state=restarted
